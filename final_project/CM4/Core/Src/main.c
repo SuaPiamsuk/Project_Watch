@@ -72,15 +72,23 @@ ETH_TxPacketConfig TxConfig;
 
 ETH_HandleTypeDef heth;
 
+TIM_HandleTypeDef htim1;
+
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
+//set time counter
+uint64_t _micro = 0;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
-
+//time
+uint64_t microseconds();
+//button
+void ButtonMatrixUpdate();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -127,7 +135,9 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start_IT(&htim1);
 
   /* USER CODE END 2 */
 
@@ -189,6 +199,53 @@ void MX_ETH_Init(void)
 }
 
 /**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 99;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 65535;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
+
+}
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -237,7 +294,47 @@ void MX_USART3_UART_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+uint64_t microseconds()
+{
+	return _micro + htim1.Instance->CNT;
+}
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if(htim == &htim1)
+	{
+		_micro += 65535;
+	}
+}
+//////////////////////////////////////////////////////////////////
+//button
+GPIO_TypeDef *ButtonMatrixPort[8] = {GPIOA,GPIOB,GPIOB,GPIOB,GPIOA,GPIOC,GPIOB,GPIOA};
+uint16_t ButtonMatrixPin[8] ={GPIO_PIN_10,GPIO_PIN_3,GPIO_PIN_5,GPIO_PIN_4,GPIO_PIN_9,GPIO_PIN_7,GPIO_PIN_6,GPIO_PIN_7};
+uint8_t ButtonMatrixLine = 0; //Where is Column
+void ButtonMatrixUpdate()
+{
+	int i;
+	for(i=0;i<4;i+=1) //check GPIO input (R pull up)
+	{
+		GPIO_PinState Pinstate = HAL_GPIO_ReadPin(ButtonMatrixPort[i], ButtonMatrixPin[i]);
+		if(Pinstate == GPIO_PIN_RESET) // button pressed
+		{
+			ArrayButton |= (uint16_t)0x1 <<(i + ButtonMatrixLine * 4);    // 0x1 == 1  : ButtonMatrixState = (uint16_t)1 <<i;
+		}
+		else
+		{
+			ArrayButton &= ~((uint16_t)0x1 <<(i + ButtonMatrixLine * 4)); //0b000 & ~(0b1000)
+		}
+	}
+	uint8_t NowOutputPin = ButtonMatrixLine + 4; // set Column(n)
+	HAL_GPIO_WritePin(ButtonMatrixPort[NowOutputPin],ButtonMatrixPin[NowOutputPin], GPIO_PIN_SET); //Output->High
 
+	ButtonMatrixLine = (ButtonMatrixLine+1) % 4; //update new line
+
+	uint8_t NextOutputPin = ButtonMatrixLine + 4; // reset Column(n+1)
+	HAL_GPIO_WritePin(ButtonMatrixPort[NextOutputPin],ButtonMatrixPin[NextOutputPin], GPIO_PIN_RESET); //Output->LOW
+
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* USER CODE END 4 */
 
 /**
