@@ -80,9 +80,16 @@ UART_HandleTypeDef huart3;
 //set time counter
 uint64_t _micro = 0;
 
+//button
+uint16_t ArrayButton = 0;
+
+//for read
+uint8_t ReadPin = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
+static void MX_GPIO_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 //time
@@ -135,6 +142,7 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
+  MX_GPIO_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim1);
@@ -293,6 +301,48 @@ void MX_USART3_UART_Init(void)
 
 }
 
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOG_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(R1_GPIO_Port, R1_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(R4_GPIO_Port, R4_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pins : L4_Pin L1_Pin */
+  GPIO_InitStruct.Pin = L4_Pin|L1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : R1_Pin */
+  GPIO_InitStruct.Pin = R1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(R1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : R4_Pin */
+  GPIO_InitStruct.Pin = R4_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(R4_GPIO_Port, &GPIO_InitStruct);
+
+}
+
 /* USER CODE BEGIN 4 */
 uint64_t microseconds()
 {
@@ -307,31 +357,69 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 }
 //////////////////////////////////////////////////////////////////
 //button
-GPIO_TypeDef *ButtonMatrixPort[8] = {GPIOA,GPIOB,GPIOB,GPIOB,GPIOA,GPIOC,GPIOB,GPIOA};
-uint16_t ButtonMatrixPin[8] ={GPIO_PIN_10,GPIO_PIN_3,GPIO_PIN_5,GPIO_PIN_4,GPIO_PIN_9,GPIO_PIN_7,GPIO_PIN_6,GPIO_PIN_7};
+//GPIO_TypeDef *ButtonMatrixPort[8] = {GPIOA,GPIOB,GPIOB,GPIOB,GPIOA,GPIOC,GPIOB,GPIOA};
+//uint16_t ButtonMatrixPin[8] ={GPIO_PIN_10,GPIO_PIN_3,GPIO_PIN_5,GPIO_PIN_4,GPIO_PIN_9,GPIO_PIN_7,GPIO_PIN_6,GPIO_PIN_7};
+//uint8_t ButtonMatrixLine = 0; //Where is Column
+
+GPIO_TypeDef *Port[4] = {GPIOE,GPIOE,GPIOA,GPIOG};
+uint16_t Pin[4] = {GPIO_PIN_14,GPIO_PIN_11,GPIO_PIN_8,GPIO_PIN_12};
+
+//GPIO_TypeDef *Port[4] = {GPIOA,GPIOG,GPIOE,GPIOE};
+//uint16_t Pin[4] = {GPIO_PIN_14,GPIO_PIN_11,GPIO_PIN_8,GPIO_PIN_12};
+
 uint8_t ButtonMatrixLine = 0; //Where is Column
+
 void ButtonMatrixUpdate()
 {
+//	int i;
+//	for(i=0;i<4;i+=1) //check GPIO input (R pull up)
+//	{
+//		GPIO_PinState Pinstate = HAL_GPIO_ReadPin(ButtonMatrixPort[i], ButtonMatrixPin[i]);
+//		if(Pinstate == GPIO_PIN_RESET) // button pressed
+//		{
+//			ArrayButton |= (uint16_t)0x1 <<(i + ButtonMatrixLine * 4);    // 0x1 == 1  : ButtonMatrixState = (uint16_t)1 <<i;
+//		}
+//		else
+//		{
+//			ArrayButton &= ~((uint16_t)0x1 <<(i + ButtonMatrixLine * 4)); //0b000 & ~(0b1000)
+//		}
+//	}
+//	uint8_t NowOutputPin = ButtonMatrixLine + 4; // set Column(n)
+//	HAL_GPIO_WritePin(ButtonMatrixPort[NowOutputPin],ButtonMatrixPin[NowOutputPin], GPIO_PIN_SET); //Output->High
+//
+//	ButtonMatrixLine = (ButtonMatrixLine+1) % 4; //update new line
+//
+//	uint8_t NextOutputPin = ButtonMatrixLine + 4; // reset Column(n+1)
+//	HAL_GPIO_WritePin(ButtonMatrixPort[NextOutputPin],ButtonMatrixPin[NextOutputPin], GPIO_PIN_RESET); //Output->LOW
+
+
+
+	//External pull-up
+	//S1 == PE14
+	//S2 == PE11
+	//S3 == PA8
+	//S4 == PG12
 	int i;
-	for(i=0;i<4;i+=1) //check GPIO input (R pull up)
+	for(i=0;i<2;i+=1)
 	{
-		GPIO_PinState Pinstate = HAL_GPIO_ReadPin(ButtonMatrixPort[i], ButtonMatrixPin[i]);
-		if(Pinstate == GPIO_PIN_RESET) // button pressed
+		GPIO_PinState Pinstate = HAL_GPIO_ReadPin(Port[i], Pin[i]);
+		if(Pinstate == GPIO_PIN_RESET) // pressed
 		{
-			ArrayButton |= (uint16_t)0x1 <<(i + ButtonMatrixLine * 4);    // 0x1 == 1  : ButtonMatrixState = (uint16_t)1 <<i;
+			ArrayButton |= (uint16_t)0x1 <<(i + ButtonMatrixLine * 2);    // 0x1 == 1  : ButtonMatrixState = (uint16_t)1 <<i;
 		}
 		else
 		{
-			ArrayButton &= ~((uint16_t)0x1 <<(i + ButtonMatrixLine * 4)); //0b000 & ~(0b1000)
+			ArrayButton &= ~((uint16_t)0x1 <<(i + ButtonMatrixLine * 2)); //0b000 & ~(0b1000)
 		}
+
 	}
-	uint8_t NowOutputPin = ButtonMatrixLine + 4; // set Column(n)
-	HAL_GPIO_WritePin(ButtonMatrixPort[NowOutputPin],ButtonMatrixPin[NowOutputPin], GPIO_PIN_SET); //Output->High
+	uint8_t NowOutputPin = ButtonMatrixLine + 2; // set Column(n)
+	HAL_GPIO_WritePin(Port[NowOutputPin],Pin[NowOutputPin], GPIO_PIN_SET); //Output->High
 
-	ButtonMatrixLine = (ButtonMatrixLine+1) % 4; //update new line
+	ButtonMatrixLine = (ButtonMatrixLine+1) % 2; //update new line
 
-	uint8_t NextOutputPin = ButtonMatrixLine + 4; // reset Column(n+1)
-	HAL_GPIO_WritePin(ButtonMatrixPort[NextOutputPin],ButtonMatrixPin[NextOutputPin], GPIO_PIN_RESET); //Output->LOW
+	uint8_t NextOutputPin = ButtonMatrixLine + 2; // reset Column(n+1)
+	HAL_GPIO_WritePin(Port[NextOutputPin],Pin[NextOutputPin], GPIO_PIN_RESET); //Output->LOW
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

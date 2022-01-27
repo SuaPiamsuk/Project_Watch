@@ -58,10 +58,18 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define L4_Pin GPIO_PIN_11
+#define L4_GPIO_Port GPIOE
+#define L1_Pin GPIO_PIN_14
+#define L1_GPIO_Port GPIOE
 #define STLINK_RX_Pin GPIO_PIN_8
 #define STLINK_RX_GPIO_Port GPIOD
 #define STLINK_TX_Pin GPIO_PIN_9
 #define STLINK_TX_GPIO_Port GPIOD
+#define R1_Pin GPIO_PIN_8
+#define R1_GPIO_Port GPIOA
+#define R4_Pin GPIO_PIN_12
+#define R4_GPIO_Port GPIOG
 void   MX_ETH_Init(void);
 void   MX_USART3_UART_Init(void);
 /* USER CODE BEGIN Private defines */
